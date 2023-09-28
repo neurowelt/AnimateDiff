@@ -77,6 +77,9 @@ def main(args):
             random_seeds = random_seeds * len(prompts) if len(random_seeds) == 1 else random_seeds
             
             config[config_key].random_seed = []
+
+            init_image = args.I
+
             for prompt_idx, (prompt, n_prompt, random_seed) in enumerate(zip(prompts, n_prompts, random_seeds)):
                 
                 # manually set random seed for reproduction
@@ -94,8 +97,14 @@ def main(args):
                     width               = args.W,
                     height              = args.H,
                     video_length        = args.L,
+                    init_image          = init_image,
                 ).videos
                 samples.append(sample)
+
+                # Continue from last frame
+                if args.C:
+                    init_image = sample[-1]
+                    init_image = pipeline.image_processor.postprocess(init_image)
 
                 prompt = "-".join((prompt.replace("/", "").split(" ")[:10]))
                 save_videos_grid(sample, f"{savedir}/sample/{sample_idx}-{prompt}.gif")
@@ -118,6 +127,8 @@ if __name__ == "__main__":
     parser.add_argument("--L", type=int, default=16 )
     parser.add_argument("--W", type=int, default=512)
     parser.add_argument("--H", type=int, default=512)
+    parser.add_argument("--I", type=str, default=None)
+    parser.add_argument("--C", type=bool, default=False)
 
     args = parser.parse_args()
     main(args)
