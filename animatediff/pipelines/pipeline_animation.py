@@ -24,13 +24,15 @@ from diffusers.schedulers import (
     PNDMScheduler,
 )
 from diffusers.utils import deprecate, logging, BaseOutput
-
+from diffusers import StableDiffusionPipeline
 from einops import rearrange
+from diffusers.image_processor import VaeImageProcessor
 
 from ..models.unet import UNet3DConditionModel
 from ..utils.util import preprocess_image
 
 import PIL
+from PIL import Image
 
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
@@ -117,6 +119,7 @@ class AnimationPipeline(DiffusionPipeline):
             scheduler=scheduler,
         )
         self.vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
+        self.image_processor = VaeImageProcessor(vae_scale_factor=self.vae_scale_factor)
 
     def enable_vae_slicing(self):
         self.vae.enable_slicing()
@@ -290,9 +293,10 @@ class AnimationPipeline(DiffusionPipeline):
         shape = (batch_size, num_channels_latents, video_length, height // self.vae_scale_factor, width // self.vae_scale_factor)
         
         if init_image is not None:
-            image = PIL.Image.open(init_image)
+            if isinstance(init_image, str):
+                image = Image.open(init_image)
             image = preprocess_image(image)
-            if not isinstance(image, (torch.Tensor, PIL.Image.Image, list)):
+            if not isinstance(image, (torch.Tensor, Image.Image, list)):
                 raise ValueError(
                     f"`image` has to be of type `torch.Tensor`, `PIL.Image.Image` or list but is {type(image)}"
                 )
@@ -349,7 +353,7 @@ class AnimationPipeline(DiffusionPipeline):
         self,
         prompt: Union[str, List[str]],
         video_length: Optional[int],
-        init_image: Optional[str] = None,
+        init_image: Optional[Union[str, Image.Image]] = None,
         height: Optional[int] = None,
         width: Optional[int] = None,
         num_inference_steps: int = 50,
