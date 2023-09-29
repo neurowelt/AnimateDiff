@@ -128,7 +128,7 @@ if __name__ == "__main__":
     parser.add_argument("--W", type=int, default=512)
     parser.add_argument("--H", type=int, default=512)
     parser.add_argument("--I", type=str, default=None)
-    parser.add_argument("--C", type=bool, default=False)
+    parser.add_argument("--C", type=bool, store_true=True)
 
     args = parser.parse_args()
     main(args)
