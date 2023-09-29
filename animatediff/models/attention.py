@@ -227,7 +227,7 @@ class BasicTransformerBlock(nn.Module):
         # Temp-Attn
         assert unet_use_temporal_attention is not None
         if unet_use_temporal_attention:
-            self.attn_temp = CrossAttention(
+            self.attn_temp = Attention(
                 query_dim=dim,
                 heads=num_attention_heads,
                 dim_head=attention_head_dim,
@@ -238,7 +238,7 @@ class BasicTransformerBlock(nn.Module):
             nn.init.zeros_(self.attn_temp.to_out[0].weight.data)
             self.norm_temp = AdaLayerNorm(dim, num_embeds_ada_norm) if self.use_ada_layer_norm else nn.LayerNorm(dim)
 
-    def set_use_memory_efficient_attention_xformers(self, use_memory_efficient_attention_xformers: bool):
+    def set_use_memory_efficient_attention_xformers(self, valid: bool, attention_op = None):
         if not is_xformers_available():
             print("Here is how to install it")
             raise ModuleNotFoundError(
@@ -261,9 +261,9 @@ class BasicTransformerBlock(nn.Module):
                 )
             except Exception as e:
                 raise e
-            self.attn1._use_memory_efficient_attention_xformers = use_memory_efficient_attention_xformers
+            self.attn1._use_memory_efficient_attention_xformers = valid
             if self.attn2 is not None:
-                self.attn2._use_memory_efficient_attention_xformers = use_memory_efficient_attention_xformers
+                self.attn2._use_memory_efficient_attention_xformers = valid
             # self.attn_temp._use_memory_efficient_attention_xformers = use_memory_efficient_attention_xformers
 
     def forward(self, hidden_states, encoder_hidden_states=None, timestep=None, attention_mask=None, video_length=None):
