@@ -1,3 +1,4 @@
+import logging
 import argparse
 import datetime
 import inspect
@@ -6,7 +7,6 @@ from omegaconf import OmegaConf
 
 import torch
 
-import diffusers
 from diffusers import AutoencoderKL, DDIMScheduler
 
 from tqdm.auto import tqdm
@@ -18,10 +18,6 @@ from animatediff.utils.util import save_videos_grid
 from animatediff.utils.util import load_weights
 from diffusers.utils.import_utils import is_xformers_available
 
-from einops import rearrange, repeat
-
-import csv, pdb, glob
-import math
 from pathlib import Path
 
 
@@ -35,6 +31,9 @@ def main(args):
 
     config  = OmegaConf.load(args.config)
     samples = []
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    logging.info(f"Using device: {device}")
     
     sample_idx = 0
     for model_idx, (config_key, model_config) in enumerate(list(config.items())):
@@ -51,12 +50,11 @@ def main(args):
             unet         = UNet3DConditionModel.from_pretrained_2d(args.pretrained_model_path, subfolder="unet", unet_additional_kwargs=OmegaConf.to_container(inference_config.unet_additional_kwargs))
 
             if is_xformers_available(): unet.enable_xformers_memory_efficient_attention()
-            else: assert False
 
             pipeline = AnimationPipeline(
                 vae=vae, text_encoder=text_encoder, tokenizer=tokenizer, unet=unet,
                 scheduler=DDIMScheduler(**OmegaConf.to_container(inference_config.noise_scheduler_kwargs)),
-            ).to("cuda")
+            ).to(device)
 
             pipeline = load_weights(
                 pipeline,
@@ -67,7 +65,7 @@ def main(args):
                 dreambooth_model_path      = model_config.get("dreambooth_path", ""),
                 lora_model_path            = model_config.get("lora_model_path", ""),
                 lora_alpha                 = model_config.get("lora_alpha", 0.8),
-            ).to("cuda")
+            ).to(device)
 
             prompts      = model_config.prompt
             n_prompts    = list(model_config.n_prompt) * len(prompts) if len(model_config.n_prompt) == 1 else model_config.n_prompt
@@ -120,7 +118,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--pretrained_model_path", type=str, default="models/StableDiffusion/stable-diffusion-v1-5",)
+    parser.add_argument("--pretrained_model_path", type=str, default="/Users/neurowelt/Programming/Models/SD/runway-1.5",)
     parser.add_argument("--inference_config",      type=str, default="configs/inference/inference-v1.yaml")    
     parser.add_argument("--config",                type=str, required=True)
     
@@ -128,7 +126,7 @@ if __name__ == "__main__":
     parser.add_argument("--W", type=int, default=512)
     parser.add_argument("--H", type=int, default=512)
     parser.add_argument("--I", type=str, default=None)
-    parser.add_argument("--C", type=bool, store_true=True)
+    parser.add_argument("--C", type=bool, action="store_true", default=True)
 
     args = parser.parse_args()
     main(args)
