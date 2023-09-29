@@ -294,9 +294,9 @@ class AnimationPipeline(DiffusionPipeline):
         
         if init_image is not None:
             if isinstance(init_image, str):
-                image = Image.open(init_image)
-                image = image.convert("RGB")
-            image = self.image_processor.preprocess(image)
+                init_image = Image.open(init_image)
+                init_image = init_image.convert("RGB")
+            image = self.image_processor.preprocess(init_image)
             if not isinstance(image, (torch.Tensor, Image.Image, list)):
                 raise ValueError(
                     f"`image` has to be of type `torch.Tensor`, `PIL.Image.Image` or list but is {type(image)}"
