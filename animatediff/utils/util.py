@@ -128,6 +128,22 @@ def load_weights(
             
         # 1. vae
         converted_vae_checkpoint = convert_ldm_vae_checkpoint(dreambooth_state_dict, animation_pipeline.vae.config)
+        for k, _ in converted_vae_checkpoint.copy().items():
+            _old = None
+            if ".key." in k:
+                _old = ".key."
+                _repl = ".to_k."
+            elif ".value." in k:
+                _old = ".value."
+                _repl = ".to_v."
+            elif ".query." in k:
+                _old = ".query."
+                _repl = ".to_q."
+            elif ".proj_attn." in k:
+                _old = ".proj_attn."
+                _repl = ".to_out.0."
+            if _old:
+                converted_vae_checkpoint[k.replace(_old, _repl)] = converted_vae_checkpoint.pop(k)
         animation_pipeline.vae.load_state_dict(converted_vae_checkpoint)
         # 2. unet
         converted_unet_checkpoint = convert_ldm_unet_checkpoint(dreambooth_state_dict, animation_pipeline.unet.config)
