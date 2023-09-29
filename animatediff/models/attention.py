@@ -11,7 +11,7 @@ from diffusers.configuration_utils import ConfigMixin, register_to_config
 from diffusers.models.modeling_utils import ModelMixin
 from diffusers.utils import BaseOutput
 from diffusers.utils.import_utils import is_xformers_available
-from diffusers.models.attention import CrossAttention, FeedForward, AdaLayerNorm
+from diffusers.models.attention import Attention, FeedForward, AdaLayerNorm
 
 from einops import rearrange, repeat
 import pdb
@@ -167,18 +167,31 @@ class BasicTransformerBlock(nn.Module):
 
         # SC-Attn
         assert unet_use_cross_frame_attention is not None
+        # Not sure where is this coming from, don't know where it was moved
+        # or if it is even needed (maybe newest Attention class handles this)
         if unet_use_cross_frame_attention:
-            self.attn1 = SparseCausalAttention2D(
-                query_dim=dim,
-                heads=num_attention_heads,
-                dim_head=attention_head_dim,
-                dropout=dropout,
-                bias=attention_bias,
-                cross_attention_dim=cross_attention_dim if only_cross_attention else None,
-                upcast_attention=upcast_attention,
-            )
+            try:
+                self.attn1 = SparseCausalAttention2D(
+                    query_dim=dim,
+                    heads=num_attention_heads,
+                    dim_head=attention_head_dim,
+                    dropout=dropout,
+                    bias=attention_bias,
+                    cross_attention_dim=cross_attention_dim if only_cross_attention else None,
+                    upcast_attention=upcast_attention,
+                )
+            except ModuleNotFoundError:
+                print("SparseCausalAttention2D not found, using Attention instead (might mess with the process)")
+                self.attn1 = Attention(
+                    query_dim=dim,
+                    heads=num_attention_heads,
+                    dim_head=attention_head_dim,
+                    dropout=dropout,
+                    bias=attention_bias,
+                    upcast_attention=upcast_attention,
+                )
         else:
-            self.attn1 = CrossAttention(
+            self.attn1 = Attention(
                 query_dim=dim,
                 heads=num_attention_heads,
                 dim_head=attention_head_dim,
@@ -190,7 +203,7 @@ class BasicTransformerBlock(nn.Module):
 
         # Cross-Attn
         if cross_attention_dim is not None:
-            self.attn2 = CrossAttention(
+            self.attn2 = Attention(
                 query_dim=dim,
                 cross_attention_dim=cross_attention_dim,
                 heads=num_attention_heads,
