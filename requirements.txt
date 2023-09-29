@@ -1,0 +1,11 @@
+diffusers==0.21.3
+transformers==4.30.2
+xformers==0.0.22
+imageio==2.27.0
+decord==0.6.0
+gdown
+einops
+omegaconf
+safetensors
+gradio
+wandb
