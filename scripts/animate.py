@@ -14,8 +14,7 @@ from transformers import CLIPTextModel, CLIPTokenizer
 
 from animatediff.models.unet import UNet3DConditionModel
 from animatediff.pipelines.pipeline_animation import AnimationPipeline
-from animatediff.utils.util import save_videos_grid
-from animatediff.utils.util import load_weights
+from animatediff.utils.util import save_videos_grid, load_weights, tensor2vid
 from diffusers.utils.import_utils import is_xformers_available
 
 from pathlib import Path
@@ -49,7 +48,8 @@ def main(args):
             vae          = AutoencoderKL.from_pretrained(args.pretrained_model_path, subfolder="vae")            
             unet         = UNet3DConditionModel.from_pretrained_2d(args.pretrained_model_path, subfolder="unet", unet_additional_kwargs=OmegaConf.to_container(inference_config.unet_additional_kwargs))
 
-            if is_xformers_available(): unet.enable_xformers_memory_efficient_attention()
+            if is_xformers_available(): 
+                unet.enable_xformers_memory_efficient_attention()
 
             pipeline = AnimationPipeline(
                 vae=vae, text_encoder=text_encoder, tokenizer=tokenizer, unet=unet,
@@ -101,8 +101,8 @@ def main(args):
 
                 # Continue from last frame
                 if args.C:
-                    init_image = sample[-1]
-                    init_image = pipeline.image_processor.postprocess(init_image)
+                    frames = tensor2vid(sample)
+                    init_image = frames[-1]
 
                 prompt = "-".join((prompt.replace("/", "").split(" ")[:10]))
                 save_videos_grid(sample, f"{savedir}/sample/{sample_idx}-{prompt}.gif")
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     parser.add_argument("--W", type=int, default=512)
     parser.add_argument("--H", type=int, default=512)
     parser.add_argument("--I", type=str, default=None)
-    parser.add_argument("--C", type=bool, action="store_true", default=True)
+    parser.add_argument("--C", action="store_true")
 
     args = parser.parse_args()
     main(args)
