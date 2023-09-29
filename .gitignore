@@ -13,3 +13,7 @@ models/DreamBooth_LoRA/Put*personalized*T2I*checkpoints*here.txt
 .ossutil_checkpoint/
 ossutil_output/
 debugs/
+test.py
+models/StableDiffusion/*
+.DS_Store
+init.png
