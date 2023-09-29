@@ -14,7 +14,7 @@ from transformers import CLIPTextModel, CLIPTokenizer
 
 from diffusers.configuration_utils import FrozenDict
 from diffusers.models import AutoencoderKL
-from diffusers.pipeline_utils import DiffusionPipeline
+from diffusers.pipelines.pipeline_utils import DiffusionPipeline
 from diffusers.schedulers import (
     DDIMScheduler,
     DPMSolverMultistepScheduler,
@@ -295,12 +295,14 @@ class AnimationPipeline(DiffusionPipeline):
         if init_image is not None:
             if isinstance(init_image, str):
                 image = Image.open(init_image)
-            image = preprocess_image(image)
+                image = image.convert("RGB")
+            image = self.image_processor.preprocess(image)
             if not isinstance(image, (torch.Tensor, Image.Image, list)):
                 raise ValueError(
                     f"`image` has to be of type `torch.Tensor`, `PIL.Image.Image` or list but is {type(image)}"
                 )
             image = image.to(device=device, dtype=dtype)
+            
             if isinstance(generator, list):
                 init_latents = [
                     self.vae.encode(image[i : i + 1]).latent_dist.sample(generator[i]) for i in range(batch_size)
@@ -403,8 +405,9 @@ class AnimationPipeline(DiffusionPipeline):
         timesteps = self.scheduler.timesteps
 
         # Prepare latent variables
-        num_channels_latents = self.unet.in_channels
+        num_channels_latents = self.unet.config.in_channels
         latents = self.prepare_latents(
+            init_image,
             batch_size * num_videos_per_prompt,
             num_channels_latents,
             video_length,
@@ -413,8 +416,7 @@ class AnimationPipeline(DiffusionPipeline):
             text_embeddings.dtype,
             device,
             generator,
-            latents,
-            init_image=init_image
+            latents
         )
         latents_dtype = latents.dtype
 
