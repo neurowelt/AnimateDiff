@@ -21,3 +21,4 @@ dependencies:
     - safetensors
     - gradio
     - wandb
+    - accelerate
