@@ -30,6 +30,7 @@ from diffusers.image_processor import VaeImageProcessor
 
 from ..models.unet import UNet3DConditionModel
 from ..utils.util import preprocess_image
+from diffusers.utils.torch_utils import randn_tensor
 
 import PIL
 from PIL import Image
@@ -289,8 +290,14 @@ class AnimationPipeline(DiffusionPipeline):
                 f" {type(callback_steps)}."
             )
 
-    def prepare_latents(self, init_image, batch_size, num_channels_latents, video_length, height, width, dtype, device, generator, latents=None):
+    def prepare_latents(self, init_image, timestep, batch_size, num_channels_latents, video_length, height, width, dtype, device, generator, latents=None):
         shape = (batch_size, num_channels_latents, video_length, height // self.vae_scale_factor, width // self.vae_scale_factor)
+
+        if isinstance(generator, list) and len(generator) != batch_size:
+            raise ValueError(
+                f"You have passed a list of generators of length {len(generator)}, but requested an effective batch"
+                f" size of {batch_size}. Make sure the batch size matches the length of the generators."
+            )
         
         if init_image is not None:
             if isinstance(init_image, str):
@@ -311,20 +318,21 @@ class AnimationPipeline(DiffusionPipeline):
             else:
                 init_latents = self.vae.encode(image).latent_dist.sample(generator)
         else:
-            init_latents = None
+            # Regular latent for txt2img
+            if latents is None:
+                latents = randn_tensor(shape, generator=generator, device=device, dtype=dtype)
+            else:
+                latents = latents.to(device)
 
+            # scale the initial noise by the standard deviation required by the scheduler
+            latents = latents * self.scheduler.init_noise_sigma
 
-        if isinstance(generator, list) and len(generator) != batch_size:
-            raise ValueError(
-                f"You have passed a list of generators of length {len(generator)}, but requested an effective batch"
-                f" size of {batch_size}. Make sure the batch size matches the length of the generators."
-            )
+            return latents
+        
         if latents is None:
             rand_device = "cpu" if device.type == "mps" else device
 
             if isinstance(generator, list):
-                shape = shape
-                # shape = (1,) + shape[1:]
                 # ignore init latents for batch model
                 latents = [
                     torch.randn(shape, generator=generator[i], device=rand_device, dtype=dtype)
@@ -343,11 +351,18 @@ class AnimationPipeline(DiffusionPipeline):
             if latents.shape != shape:
                 raise ValueError(f"Unexpected latents shape, got {latents.shape}, expected {shape}")
             latents = latents.to(device)
-
-        # scale the initial noise by the standard deviation required by the scheduler
-        if init_latents is None:
-            latents = latents * self.scheduler.init_noise_sigma
+                
         return latents
+
+
+    def get_timesteps(self, num_inference_steps, strength, device):
+        # get the original timestep using init_timestep
+        init_timestep = min(int(num_inference_steps * strength), num_inference_steps)
+
+        t_start = max(num_inference_steps - init_timestep, 0)
+        timesteps = self.scheduler.timesteps[t_start * self.scheduler.order :]
+
+        return timesteps, num_inference_steps - t_start
 
 
     @torch.no_grad()
@@ -356,6 +371,7 @@ class AnimationPipeline(DiffusionPipeline):
         prompt: Union[str, List[str]],
         video_length: Optional[int],
         init_image: Optional[Union[str, Image.Image]] = None,
+        strength: float = 0.5,
         height: Optional[int] = None,
         width: Optional[int] = None,
         num_inference_steps: int = 50,
@@ -400,14 +416,18 @@ class AnimationPipeline(DiffusionPipeline):
             prompt, device, num_videos_per_prompt, do_classifier_free_guidance, negative_prompt
         )
 
-        # Prepare timesteps
+        # Get timesteps
+        if init_image is None:
+            strength = 1.0
         self.scheduler.set_timesteps(num_inference_steps, device=device)
-        timesteps = self.scheduler.timesteps
+        timesteps, num_inference_steps = self.get_timesteps(num_inference_steps, strength, device)
+        latent_timestep = timesteps[:1].repeat(batch_size * num_videos_per_prompt)
 
         # Prepare latent variables
         num_channels_latents = self.unet.config.in_channels
         latents = self.prepare_latents(
             init_image,
+            latent_timestep,
             batch_size * num_videos_per_prompt,
             num_channels_latents,
             video_length,
