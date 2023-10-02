@@ -100,7 +100,7 @@ def generate(
             ).to(device)
 
             # Prepare prompts
-            _prompts = args.get("prompts", None)
+            _prompts = getattr(args, "prompts", None)
             if _prompts is None:
                 prompts = model_config.prompt
             else:
@@ -116,7 +116,7 @@ def generate(
             
             config[config_key].random_seed = []
 
-            init_image = args.I
+            init_image = getattr(args, "I", None)
 
             for prompt_idx, (prompt, n_prompt, random_seed) in enumerate(zip(prompts, n_prompts, random_seeds)):
                 
