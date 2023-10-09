@@ -178,7 +178,7 @@ def load_weights(
 
     down_features, mid_features = None, None
     controlnet = None
-    if 'control' in model_config:
+    if getattr(model_config, "config", False):
         controlnet_config = {
             'video_length': model_config.L,
             'img_h': model_config.H,
@@ -186,7 +186,7 @@ def load_weights(
             'guidance_scale': model_config.guidance_scale,
             'steps': model_config.steps,
             'device': device,
-            **model_config.control
+            **model_config.control.__dict__
         }
         controlnet = ControlnetModule(controlnet_config)
 
