@@ -88,8 +88,10 @@ def generate(
                 scheduler=DDIMScheduler(**OmegaConf.to_container(inference_config.noise_scheduler_kwargs)),
             ).to(device)
 
-            pipeline = load_weights(
+            pipeline, controlnet, down_features, mid_features = load_weights(
                 pipeline,
+                args,
+                device,
                 # motion module
                 motion_module_path         = motion_module,
                 motion_module_lora_configs = model_config.get("motion_module_lora_configs", []),
@@ -124,6 +126,9 @@ def generate(
                 if random_seed != -1: torch.manual_seed(random_seed)
                 else: torch.seed()
                 config[config_key].random_seed.append(torch.initial_seed())
+
+                if controlnet is not None:
+                    down_features, mid_features = controlnet(model_config.control.video_path, prompt, n_prompt, random_seed)
                 
                 print(f"current seed: {torch.initial_seed()}")
                 print(f"sampling {prompt} ...")
@@ -136,13 +141,15 @@ def generate(
                     height              = args.H,
                     video_length        = args.L,
                     init_image          = init_image,
+                    down_block_control  = down_features, 
+                    mid_block_control   = mid_features,
                 ).videos
                 samples.append(sample)
                 clip = tensor2vid(sample)
                 frames.append(clip)
 
                 # Continue from last frame
-                if args.C:
+                if getattr(args, "C", False):
                     init_image = clip[-1]
 
                 prompt = "-".join((prompt.replace("/", "").split(" ")[:10]))

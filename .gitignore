@@ -18,3 +18,4 @@ models/StableDiffusion/*
 .DS_Store
 init.png
 pipeline_animation_img.py
+ControledAnimateDiff/*

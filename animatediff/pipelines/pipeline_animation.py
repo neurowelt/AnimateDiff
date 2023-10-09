@@ -385,6 +385,8 @@ class AnimationPipeline(DiffusionPipeline):
         return_dict: bool = True,
         callback: Optional[Callable[[int, int, torch.FloatTensor], None]] = None,
         callback_steps: Optional[int] = 1,
+        down_block_control: Optional[List[torch.FloatTensor]] = None,
+        mid_block_control: Optional[torch.FloatTensor] = None,
         **kwargs,
     ):
         # Default height and width to unet
@@ -452,7 +454,13 @@ class AnimationPipeline(DiffusionPipeline):
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
 
                 # predict the noise residual
-                noise_pred = self.unet(latent_model_input, t, encoder_hidden_states=text_embeddings).sample.to(dtype=latents_dtype)
+                noise_pred = self.unet(
+                    latent_model_input,
+                    t,
+                    encoder_hidden_states=text_embeddings,
+                    down_block_additional_residuals=[x.to(self.device) for x in down_block_control[i]] if down_block_control is not None else None,
+                    mid_block_additional_residual=mid_block_control[i].to(self.device) if mid_block_control is not None else None,
+                ).sample.to(dtype=latents_dtype)
                 # noise_pred = []
                 # import pdb
                 # pdb.set_trace()

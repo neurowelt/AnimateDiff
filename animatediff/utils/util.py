@@ -12,6 +12,7 @@ from tqdm import tqdm
 from einops import rearrange
 from animatediff.utils.convert_from_ckpt import convert_ldm_unet_checkpoint, convert_ldm_clip_checkpoint, convert_ldm_vae_checkpoint
 from animatediff.utils.convert_lora_safetensor_to_diffusers import convert_lora, convert_motion_lora_ckpt_to_diffusers
+from animatediff.controlnet.controlnet_module import ControlnetModule
 
 from packaging import version
 import PIL
@@ -96,6 +97,8 @@ def ddim_inversion(pipeline, ddim_scheduler, video_latent, num_inv_steps, prompt
 
 def load_weights(
     animation_pipeline,
+    model_config,
+    device,
     # motion module
     motion_module_path         = "",
     motion_module_lora_configs = [],
@@ -173,7 +176,21 @@ def load_weights(
 
         animation_pipeline = convert_motion_lora_ckpt_to_diffusers(animation_pipeline, motion_lora_state_dict, alpha)
 
-    return animation_pipeline
+    down_features, mid_features = None, None
+    controlnet = None
+    if 'control' in model_config:
+        controlnet_config = {
+            'video_length': model_config.L,
+            'img_h': model_config.H,
+            'img_w': model_config.W,
+            'guidance_scale': model_config.guidance_scale,
+            'steps': model_config.steps,
+            'device': device,
+            **model_config.control
+        }
+        controlnet = ControlnetModule(controlnet_config)
+
+    return animation_pipeline, controlnet, down_features, mid_features
 
 
 if version.parse(version.parse(PIL.__version__).base_version) >= version.parse("9.1.0"):
