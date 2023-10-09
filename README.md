@@ -1,5 +1,7 @@
 # AnimateDiff
 
+> NOTE: The goal of this repository is to experiment with different additions to AnimateDiff. This repository contains updates found in different repositories. You can found the list of repositories [below](#note)
+
 This repository is the official implementation of [AnimateDiff](https://arxiv.org/abs/2307.04725).
 
 **[AnimateDiff: Animate Your Personalized Text-to-Image Diffusion Models without Specific Tuning](https://arxiv.org/abs/2307.04725)**
@@ -379,3 +381,10 @@ Pose Model：<a href="https://civitai.com/models/107295/or-holdingsign">Hold Sig
 
 ## Acknowledgements
 Codebase built upon [Tune-a-Video](https://github.com/showlab/Tune-A-Video).
+
+## Note
+
+I used this repository to experiment with some things, based off other people's great work:
+
+- [https://github.com/TheDenk/ControledAnimateDiff](https://github.com/TheDenk/ControledAnimateDiff)
+- [https://github.com/ykk648/AnimateDiff-I2V](https://github.com/ykk648/AnimateDiff-I2V)
