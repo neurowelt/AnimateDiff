@@ -19,3 +19,4 @@ models/StableDiffusion/*
 init.png
 pipeline_animation_img.py
 ControledAnimateDiff/*
+!playground.ipynb
