@@ -175,6 +175,7 @@ def load_weights(
         motion_lora_state_dict = motion_lora_state_dict["state_dict"] if "state_dict" in motion_lora_state_dict else motion_lora_state_dict
 
         animation_pipeline = convert_motion_lora_ckpt_to_diffusers(animation_pipeline, motion_lora_state_dict, alpha)
+        del motion_lora_state_dict
 
     down_features, mid_features = None, None
     controlnet = None

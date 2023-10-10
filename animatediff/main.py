@@ -1,4 +1,5 @@
 import os
+import time
 import argparse
 import datetime
 import inspect
@@ -99,7 +100,7 @@ def generate(
                 dreambooth_model_path      = model_config.get("dreambooth_path", ""),
                 lora_model_path            = model_config.get("lora_model_path", ""),
                 lora_alpha                 = model_config.get("lora_alpha", 0.8),
-            ).to(device)
+            )
 
             # Prepare prompts
             _prompts = getattr(args, "prompts", None)
@@ -129,6 +130,8 @@ def generate(
 
                 if controlnet is not None:
                     down_features, mid_features = controlnet(model_config.control.video_path, prompt, n_prompt, random_seed)
+                    torch.cuda.empty_cache()
+                    time.sleep(2)  # make sure the cache clears
                 
                 print(f"current seed: {torch.initial_seed()}")
                 print(f"sampling {prompt} ...")
@@ -159,5 +162,7 @@ def generate(
                 print(f"save to {savedir}/sample/{prompt}.gif")
                 
                 sample_idx += 1
+                torch.cuda.empty_cache()
+                time.sleep(2)
 
     return samples, frames, paths
